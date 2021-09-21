@@ -58,18 +58,6 @@ def transpose(array, nodeshape):
     return array.reshape(prod(nodeshape), -1)
 
 
-def translate(path: Path, data: Array2D) -> Array2D:
-    info_path = path / 'info.txt'
-    if not info_path.exists():
-        log.warning("Unable to find mesh origin info, coordinates may be unreliable")
-        return data
-    with open(info_path, 'r') as f:
-        x, y = map(float, next(f).split())
-    data[:,0] += x
-    data[:,1] += y
-    return data
-
-
 def ensure_native(data: np.ndarray) -> np.ndarray:
     if data.dtype.byteorder in ('=', sys.byteorder):
         return data
@@ -167,6 +155,7 @@ class SIMRAMeshReader(SIMRAReader):
     def validate(self):
         super().validate()
         config.require(multiple_timesteps=False, reason="SIMRA files do not support multiple timesteps")
+        config.require(offset_should_exist=True)
 
 
 class SIMRA2DMapReader(SIMRAMeshReader):
@@ -220,7 +209,7 @@ class SIMRA2DMapReader(SIMRAMeshReader):
                 nodes.extend(map(float, line.split()))
         nodes = np.array(nodes).reshape(*self.nodeshape[::-1], 3)
         nodes[...,2 ] /= 10      # Map files have a vertical resolution factor of 10
-        return translate(self.filename.parent, nodes.reshape(-1, 3))
+        return nodes.reshape(-1, 3)
 
 
 class SIMRA2DMeshReader(SIMRAMeshReader):
@@ -261,7 +250,7 @@ class SIMRA2DMeshReader(SIMRAMeshReader):
     def nodes(self) -> Array2D:
         nnodes = prod(s+1 for s in self.shape)
         nodes = np.array([tuple(map(float, next(self.meshfile).split()[1:])) for _ in range(nnodes)])
-        return translate(self.filename.parent, nodes)
+        return nodes
 
 
 class SIMRA3DMeshReader(SIMRAMeshReader):
@@ -310,7 +299,7 @@ class SIMRA3DMeshReader(SIMRAMeshReader):
             fortran_skip_record(self.mesh)
             nodes = transpose(self.mesh.read_reals(self.f4_type), self.nodeshape)
         nodes = ensure_native(nodes)
-        return translate(self.filename.parent, nodes)
+        return nodes
 
 
 class SIMRABoundaryReader(SIMRAReader):
@@ -469,6 +458,10 @@ class SIMRADataReader(SIMRAReader):
         else:
             self.input_data = {}
             log.warning(f"SIMRA input file not found, scales will be missing")
+
+    def validate(self):
+        self.mesh.validate()
+        super().validate()
 
     def patch(self) -> Patch:
         return self.mesh.patch()

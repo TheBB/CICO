@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from itertools import islice
+from pathlib import Path
 
 from . import config
 from .coords import Coords, Converter, graph, CoordinateConversionError, Local
@@ -317,3 +318,47 @@ class CoordinateTransformField(SourcedField):
                 yield patch, conv.vectors(self.manager.source_coords, self.manager.target, data, patch.key)
             else:
                 yield patch, data
+
+
+
+# Offset
+# ----------------------------------------------------------------------
+
+
+class OffsetFilter(Source):
+
+    src: Source
+    path: Path
+
+    def __init__(self, src: Source, path: Path):
+        self.src = src
+        self.path = path
+
+    def steps(self) -> Iterable[Tuple[int, StepData]]:
+        yield from self.src.steps()
+
+    def fields(self) -> Iterable[Field]:
+        for fld in self.src.fields():
+            if fld.is_geometry:
+                if not fld.coords.is_affine:
+                    continue
+                yield OffsetGeometryField(fld, self.path)
+            else:
+                yield fld
+
+
+class OffsetGeometryField(SourcedField):
+
+    x: float
+    y: float
+
+    def __init__(self, src: Field, path: Path):
+        self.src = src
+        with open(path, 'r') as f:
+            self.x, self.y = map(float, next(f).split())
+
+    def patches(self, stepid: int, force: bool = False, coords: Optional[Coords] = None) -> FieldPatches:
+        for patch, data in self.src.patches(stepid, force=force, coords=coords):
+            data[:,0] += self.x
+            data[:,1] += self.y
+            yield patch, data

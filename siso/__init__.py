@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from enum import IntEnum, Enum
+from pathlib import Path
 
 from typing import Dict, Any, Optional, Tuple
 
@@ -119,6 +120,12 @@ class Config(metaclass=ConfigMeta):
 
     # Input coordinate overrides.
     input_coords = Setting({}, Pipeline, name='--in-coords')
+
+    # Use info.txt grid offset
+    offset_file = Setting(None, Pipeline, name="--offset")
+
+    # Expect to find info.txt grid offset
+    offset_should_exist = Setting(False, Pipeline)
 
     # Input endianness indicator. Used by the SIMRA reader.
     input_endianness = Setting('native', Reader, name='--in-endianness')

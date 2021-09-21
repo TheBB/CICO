@@ -2,14 +2,16 @@ from contextlib import contextmanager
 from functools import partial, wraps
 from itertools import product, chain
 from operator import attrgetter
+from pathlib import Path
 
 import cachetools
 from cachetools.keys import hashkey
 import numpy as np
 from scipy.io import FortranFile
+import treelog as log
 
 from typing import Iterable, Type, TypeVar, Callable, IO
-from .typing import Array
+from .typing import Array2D
 
 
 

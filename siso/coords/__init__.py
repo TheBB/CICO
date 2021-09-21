@@ -93,6 +93,7 @@ class WGS72(ERFAEllipsoid):
 class Coords(ABC):
 
     name: str
+    is_affine: bool
 
     @staticmethod
     def find(name: str) -> 'Coords':
@@ -121,6 +122,7 @@ class Local(Coords):
     """
 
     name = 'local'
+    is_affine = True
 
     specific_name: str
 
@@ -138,6 +140,7 @@ class Geodetic(Coords):
     """Latitude, longitude and height above the reference ellipsoid."""
 
     name = 'geodetic'
+    is_affine = False
 
 
 class UTM(Coords):
@@ -147,6 +150,7 @@ class UTM(Coords):
     zone_letter: str
 
     name = 'utm'
+    is_affine = True
 
     def __init__(self, zone: str):
         self.zone_number = int(zone[:-1])

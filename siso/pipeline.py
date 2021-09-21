@@ -5,7 +5,7 @@ from typing import Iterable, List, Tuple
 
 from . import config
 from .filters import (
-    Source, LastStepFilter, StepSliceFilter, TesselatorFilter,
+    OffsetFilter, Source, LastStepFilter, StepSliceFilter, TesselatorFilter,
     MergeTopologiesFilter, CoordinateTransformFilter,
 )
 from .coords import Coords, Converter, graph
@@ -68,6 +68,13 @@ def pipeline(reader: Source, writer: Writer):
         reader = MergeTopologiesFilter(reader)
 
     reader = CoordinateTransformFilter(reader, config.coords)
+
+    if config.offset_should_exist and config.offset_file is None:
+        log.warning("Unable to find mesh origin info, coordinates may be unreliable")
+    if config.offset_file is not None:
+        log.info(f"Using {config.offset_file} for offset information")
+        reader = OffsetFilter(reader, config.offset_file)
+
     geometries, fields = discover_fields(reader)
     if not geometries:
         raise ValueError(f"Unable to find any useful geometry fields")

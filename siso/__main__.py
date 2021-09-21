@@ -91,6 +91,9 @@ FORMATS = ['vtf', 'vtk', 'vtu', 'vts', 'pvd', 'nc', 'dat']
 @click.option('--coords', default=Local(), type=CoordsType())
 @click.option('--in-coords', 'input_coords', nargs=2, multiple=True, type=click.Tuple([str, CoordsType()]))
 
+@click.option('--no-offset', 'no_offset', is_flag=True, help="Don't read info.txt offset file")
+@click.option('--offset', 'offset_file', type=str, required=False)
+
 # Logging and verbosity
 @click.option('--debug', 'verbosity', flag_value='debug')
 @click.option('--info', 'verbosity', flag_value='info', default=True)
@@ -145,19 +148,31 @@ def convert(ctx, verbosity, rich, infile, fmt, outfile, **kwargs):
     kwargs['input_coords'] = dict(kwargs['input_coords'])
     for k in ['field_filter', 'only_bases']:
         kwargs[k] = tuple(split_commas(kwargs[k]))
+
     if kwargs['no_fields']:
         kwargs['field_filter'] = []
     elif ctx.get_parameter_source('field_filter') not in explicit:
         kwargs['field_filter'] = None
     else:
         kwargs['field_filter'] = tuple(f.lower() for f in kwargs['field_filter'])
+
+    if kwargs['no_offset']:
+        kwargs['offset_file'] = False
+
+    if kwargs['offset_file'] is None:
+        info_txt_path = infile.parent / 'info.txt'
+        if info_txt_path.exists():
+            kwargs['offset_file'] = info_txt_path
+    elif isinstance(kwargs['offset_file'], str):
+        kwargs['offset_file'] = Path(kwargs['offset_file'])
+
     if isinstance(kwargs['timestep_index'], int):
         n = kwargs['timestep_index']
         kwargs['timestep_slice'] = f'{n}:{n+1}:1'
         config.require(multiple_timesteps=False, reason="--time is set")
 
     # Remove meta-options
-    for k in ['timestep_index', 'no_fields']:
+    for k in ['timestep_index', 'no_fields', 'no_offset']:
         kwargs.pop(k)
 
     try:
